@@ -11,6 +11,7 @@ import { CustomerService } from '../../customers/services/customer.service';
 import { VaultService } from '../../vault/services/vault.service';
 import { InterestService } from '../../interest/services/interest.service';
 import { CreateGirviDto, GirviQueryDto, RecordPaymentDto } from '../dto/girvi.dto';
+import { RbiComplianceService } from './rbi-compliance.service';
 import { paginate, buildPaginatedResult } from '../../common/utils/pagination';
 import { Prisma } from '@prisma/client';
 import dayjs from 'dayjs';
@@ -35,9 +36,13 @@ export class GirviService {
     private readonly vaultService: VaultService,
     private readonly interestService: InterestService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly rbiCompliance: RbiComplianceService,
   ) {}
 
   async create(tenantId: string, dto: CreateGirviDto, createdBy: string) {
+    // RBI: Bullet loan 12-month tenure cap
+    this.rbiCompliance.validateBulletLoanTenure(dto.tenureMonths);
+
     // Validate customer exists and KYC
     const customer = await this.customerService.findById(tenantId, dto.customerId);
 
@@ -182,7 +187,11 @@ export class GirviService {
       throw new BadRequestException(`Cannot record payment for ${girvi.status} Girvi`);
     }
 
-    const totalPaid = dto.principalPaid + dto.interestPaid + dto.penaltyPaid;
+    // RBI: Cash disbursement > ₹20,000 advisory check
+    const totalPaidAmount = dto.principalPaid + dto.interestPaid + dto.penaltyPaid;
+    this.rbiCompliance.validateCashDisbursalLimit(totalPaidAmount, dto.paymentMode);
+
+    const totalPaid = totalPaidAmount;
     const receiptNumber = `RCT-${Date.now().toString(36).toUpperCase()}`;
 
     const payment = await this.prisma.girviPayment.create({

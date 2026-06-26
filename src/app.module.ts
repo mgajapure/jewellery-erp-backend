@@ -12,6 +12,13 @@ import { CustomersModule } from './customers/customers.module';
 import { GirviModule } from './girvi/girvi.module';
 import { InterestModule } from './interest/interest.module';
 import { VaultModule } from './vault/vault.module';
+import { PdfModule } from './pdf/pdf.module';
+import { FilesModule } from './files/files.module';
+import { ComplianceModule } from './compliance/compliance.module';
+import { JobsModule } from './jobs/jobs.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { SalesModule } from './sales/sales.module';
+import { PurchaseModule } from './purchase/purchase.module';
 
 @Module({
   imports: [
@@ -38,6 +45,13 @@ import { VaultModule } from './vault/vault.module';
     InterestModule,
     VaultModule,
     GirviModule,
+    PdfModule,
+    FilesModule,
+    ComplianceModule,
+    JobsModule,
+    InventoryModule,
+    SalesModule,
+    PurchaseModule,
   ],
 })
 export class AppModule {}

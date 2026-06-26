@@ -337,6 +337,7 @@ model Girvi {
   totalValuation    Decimal     @map("total_valuation") @db.Decimal(12, 2)
   kfsGenerated      Boolean     @default(false) @map("kfs_generated")
   kfsAcknowledgedAt DateTime?   @map("kfs_acknowledged_at")
+  kfsPdfUrl         String?     @map("kfs_pdf_url")
   disbursedAt       DateTime?   @map("disbursed_at")
   notes             String?
   createdBy         String      @map("created_by")
@@ -394,6 +395,7 @@ model GirviPayment {
   totalPaid       Decimal     @map("total_paid") @db.Decimal(12, 2)
   paymentMode     PaymentMode @map("payment_mode")
   receiptNumber   String?     @map("receipt_number")
+  receiptPdfUrl   String?     @map("receipt_pdf_url")
   recordedBy      String      @map("recorded_by")
   notes           String?
   createdAt       DateTime    @default(now()) @map("created_at")
