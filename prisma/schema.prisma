@@ -1521,3 +1521,83 @@ model LoyaltyTransaction {
   @@index([tenantId, accountId])
   @@map("loyalty_transactions")
 }
+
+// ─── Franchise ────────────────────────────────────────────────────────────────
+
+enum FranchiseStatus {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+model FranchiseeRecord {
+  id              String          @id @default(uuid())
+  tenantId        String          @map("tenant_id")
+  franchiseeName  String          @map("franchisee_name")
+  territory       String
+  contactPerson   String          @map("contact_person")
+  contactMobile   String          @map("contact_mobile")
+  royaltyRate     Decimal         @map("royalty_rate") @db.Decimal(5, 2)
+  agreementStart  DateTime        @map("agreement_start")
+  agreementEnd    DateTime        @map("agreement_end")
+  status          FranchiseStatus @default(ACTIVE)
+  notes           String?
+  createdBy       String          @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at")
+
+  royalties       RoyaltyRecord[]
+
+  @@index([tenantId])
+  @@map("franchisee_records")
+}
+
+model RoyaltyRecord {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  franchiseeId    String           @map("franchisee_id")
+  month           Int
+  year            Int
+  grossSales      Decimal          @map("gross_sales") @db.Decimal(14, 2)
+  royaltyAmount   Decimal          @map("royalty_amount") @db.Decimal(12, 2)
+  isPaid          Boolean          @default(false) @map("is_paid")
+  paidAt          DateTime?        @map("paid_at")
+  createdBy       String           @map("created_by")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  franchisee      FranchiseeRecord @relation(fields: [franchiseeId], references: [id])
+
+  @@unique([franchiseeId, month, year])
+  @@index([tenantId])
+  @@map("royalty_records")
+}
+
+// ─── WhatsApp Log ─────────────────────────────────────────────────────────────
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsAppMessage {
+  id          String                @id @default(uuid())
+  tenantId    String                @map("tenant_id")
+  recipient   String
+  template    String?
+  message     String                @db.Text
+  status      WhatsAppMessageStatus @default(QUEUED)
+  externalId  String?               @map("external_id")
+  sentAt      DateTime?             @map("sent_at")
+  deliveredAt DateTime?             @map("delivered_at")
+  readAt      DateTime?             @map("read_at")
+  error       String?               @db.Text
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("whatsapp_messages")
+}

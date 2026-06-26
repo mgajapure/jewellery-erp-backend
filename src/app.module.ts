@@ -42,6 +42,8 @@ import { DataImportModule } from './data-import/data-import.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { GstFilingModule } from './gst-filing/gst-filing.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
+import { FranchiseModule } from './franchise/franchise.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -98,6 +100,8 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
     PayrollModule,
     GstFilingModule,
     LoyaltyModule,
+    FranchiseModule,
+    WhatsAppModule,
   ],
 })
 export class AppModule {}
