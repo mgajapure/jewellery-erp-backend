@@ -1,0 +1,942 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  MANAGER
+  STAFF
+  ACCOUNTANT
+  VIEWER
+}
+
+enum DeviceStatus {
+  PENDING
+  APPROVED
+  REVOKED
+}
+
+enum GirviStatus {
+  ACTIVE
+  PARTIAL_PAID
+  OVERDUE
+  REDEEMED
+  AUCTIONED
+  CLOSED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CARD
+  CHEQUE
+  BANK_TRANSFER
+  ONLINE
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VaultSlotStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  FAILED
+  CONFLICT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  EXPORT
+  LOGIN
+  LOGOUT
+  VIEW
+}
+
+enum InterestType {
+  SIMPLE
+  KATMITI
+  DAILY
+}
+
+enum MetalType {
+  GOLD
+  SILVER
+  DIAMOND
+  GEMSTONE
+  PLATINUM
+}
+
+enum GirviItemStatus {
+  PLEDGED
+  RELEASED
+  AUCTIONED
+}
+
+enum RepairStatus {
+  RECEIVED
+  ASSESSING
+  ESTIMATE_SENT
+  APPROVED
+  IN_PROGRESS
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum CustomOrderStatus {
+  DRAFT
+  ADVANCE_PAID
+  DESIGN_APPROVED
+  IN_PRODUCTION
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  PARTIAL_RECEIVED
+  RECEIVED
+  INVOICED
+  PAID
+  CANCELLED
+}
+
+enum SaleStatus {
+  DRAFT
+  COMPLETED
+  RETURNED
+  CANCELLED
+}
+
+// ─── Tenant ───────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  gstin       String?
+  phone       String
+  email       String?
+  address     String?
+  city        String?
+  state       String   @default("Maharashtra")
+  pincode     String?
+  logoUrl     String?
+  isActive    Boolean  @default(true)
+  settings    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  users       User[]
+  customers   Customer[]
+  girvis      Girvi[]
+  vaults      Vault[]
+  inventoryItems InventoryItem[]
+  branches    Branch[]
+  sales       Sale[]
+  purchases   PurchaseOrder[]
+
+  @@map("tenants")
+}
+
+// ─── User / Auth ──────────────────────────────────────────────────────────────
+
+model User {
+  id          String     @id @default(uuid())
+  tenantId    String     @map("tenant_id")
+  name        String
+  mobile      String
+  role        UserRole   @default(STAFF)
+  pinHash     String?    @map("pin_hash")
+  isActive    Boolean    @default(true)
+  lastLoginAt DateTime?  @map("last_login_at")
+  branchId    String?    @map("branch_id")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  deletedAt   DateTime?  @map("deleted_at")
+  deletedBy   String?    @map("deleted_by")
+
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  branch      Branch?    @relation(fields: [branchId], references: [id])
+  devices     Device[]
+  sessions    UserSession[]
+  auditLogs   AuditLog[]
+
+  @@unique([tenantId, mobile])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Device {
+  id              String       @id @default(uuid())
+  userId          String       @map("user_id")
+  tenantId        String       @map("tenant_id")
+  fingerprint     String
+  deviceName      String?      @map("device_name")
+  platform        String?
+  appVersion      String?      @map("app_version")
+  status          DeviceStatus @default(PENDING)
+  approvedBy      String?      @map("approved_by")
+  approvedAt      DateTime?    @map("approved_at")
+  lastSeenAt      DateTime?    @map("last_seen_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  user            User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, fingerprint])
+  @@index([tenantId])
+  @@map("devices")
+}
+
+model UserSession {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  tenantId      String   @map("tenant_id")
+  refreshToken  String   @unique @map("refresh_token")
+  deviceId      String?  @map("device_id")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@map("user_sessions")
+}
+
+// ─── Branch ───────────────────────────────────────────────────────────────────
+
+model Branch {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  code        String
+  gstin       String?
+  phone       String?
+  address     String?
+  city        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?  @map("deleted_by")
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  users       User[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+// ─── Customer ─────────────────────────────────────────────────────────────────
+
+model Customer {
+  id              String     @id @default(uuid())
+  tenantId        String     @map("tenant_id")
+  customerId      String     @unique @map("customer_id")
+  name            String
+  mobile          String
+  alternateMobile String?    @map("alternate_mobile")
+  email           String?
+  dateOfBirth     DateTime?  @map("date_of_birth")
+  gender          String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  aadhaarNumber   String?    @map("aadhaar_number")
+  panNumber       String?    @map("pan_number")
+  photoUrl        String?    @map("photo_url")
+  qrCode          String?    @map("qr_code")
+  kycStatus       KycStatus  @default(PENDING)
+  kycVerifiedAt   DateTime?  @map("kyc_verified_at")
+  kycVerifiedBy   String?    @map("kyc_verified_by")
+  totalGoldPledged Decimal   @default(0) @map("total_gold_pledged") @db.Decimal(10, 3)
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+  deletedBy       String?    @map("deleted_by")
+
+  tenant          Tenant     @relation(fields: [tenantId], references: [id])
+  documents       CustomerDocument[]
+  girvis          Girvi[]
+  repairs         Repair[]
+  customOrders    CustomOrder[]
+  sales           Sale[]
+
+  @@unique([tenantId, mobile])
+  @@index([tenantId])
+  @@index([tenantId, kycStatus])
+  @@map("customers")
+}
+
+model CustomerDocument {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  customerId  String   @map("customer_id")
+  docType     String   @map("doc_type")
+  docNumber   String?  @map("doc_number")
+  fileUrl     String   @map("file_url")
+  fileKey     String   @map("file_key")
+  uploadedBy  String   @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  customer    Customer @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId, customerId])
+  @@map("customer_documents")
+}
+
+// ─── Girvi (Gold Loan) ────────────────────────────────────────────────────────
+
+model Girvi {
+  id                String      @id @default(uuid())
+  tenantId          String      @map("tenant_id")
+  girviNumber       String      @unique @map("girvi_number")
+  customerId        String      @map("customer_id")
+  branchId          String?     @map("branch_id")
+  status            GirviStatus @default(ACTIVE)
+  goldRateAtCreation Decimal    @map("gold_rate_at_creation") @db.Decimal(10, 2)
+  principalAmount   Decimal     @map("principal_amount") @db.Decimal(12, 2)
+  ltv               Decimal     @map("ltv") @db.Decimal(5, 2)
+  interestRate      Decimal     @map("interest_rate") @db.Decimal(5, 2)
+  interestType      InterestType @map("interest_type")
+  tenureMonths      Int         @map("tenure_months")
+  startDate         DateTime    @map("start_date")
+  dueDate           DateTime    @map("due_date")
+  closedDate        DateTime?   @map("closed_date")
+  totalGrossWeight  Decimal     @map("total_gross_weight") @db.Decimal(10, 3)
+  totalNetWeight    Decimal     @map("total_net_weight") @db.Decimal(10, 3)
+  totalFineWeight   Decimal     @map("total_fine_weight") @db.Decimal(10, 3)
+  totalValuation    Decimal     @map("total_valuation") @db.Decimal(12, 2)
+  kfsGenerated      Boolean     @default(false) @map("kfs_generated")
+  kfsAcknowledgedAt DateTime?   @map("kfs_acknowledged_at")
+  disbursedAt       DateTime?   @map("disbursed_at")
+  notes             String?
+  createdBy         String      @map("created_by")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  deletedAt         DateTime?   @map("deleted_at")
+  deletedBy         String?     @map("deleted_by")
+
+  tenant            Tenant      @relation(fields: [tenantId], references: [id])
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  items             GirviItem[]
+  payments          GirviPayment[]
+  interestLedger    InterestLedger[]
+  vaultAssignments  VaultAssignment[]
+  renewals          GirviRenewal[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, customerId])
+  @@index([tenantId, dueDate])
+  @@map("girvis")
+}
+
+model GirviItem {
+  id              String          @id @default(uuid())
+  tenantId        String          @map("tenant_id")
+  girviId         String          @map("girvi_id")
+  itemName        String          @map("item_name")
+  metalType       MetalType       @default(GOLD)
+  purity          String
+  grossWeight     Decimal         @map("gross_weight") @db.Decimal(10, 3)
+  netWeight       Decimal         @map("net_weight") @db.Decimal(10, 3)
+  fineWeight      Decimal         @map("fine_weight") @db.Decimal(10, 3)
+  stoneWeight     Decimal         @default(0) @map("stone_weight") @db.Decimal(10, 3)
+  valuation       Decimal         @db.Decimal(12, 2)
+  photoUrls       String[]        @map("photo_urls")
+  description     String?
+  status          GirviItemStatus @default(PLEDGED)
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  girvi           Girvi           @relation(fields: [girviId], references: [id])
+
+  @@index([tenantId, girviId])
+  @@map("girvi_items")
+}
+
+model GirviPayment {
+  id              String      @id @default(uuid())
+  tenantId        String      @map("tenant_id")
+  girviId         String      @map("girvi_id")
+  paymentDate     DateTime    @map("payment_date")
+  principalPaid   Decimal     @map("principal_paid") @db.Decimal(12, 2)
+  interestPaid    Decimal     @map("interest_paid") @db.Decimal(12, 2)
+  penaltyPaid     Decimal     @default(0) @map("penalty_paid") @db.Decimal(12, 2)
+  totalPaid       Decimal     @map("total_paid") @db.Decimal(12, 2)
+  paymentMode     PaymentMode @map("payment_mode")
+  receiptNumber   String?     @map("receipt_number")
+  recordedBy      String      @map("recorded_by")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  girvi           Girvi       @relation(fields: [girviId], references: [id])
+
+  @@index([tenantId, girviId])
+  @@map("girvi_payments")
+}
+
+model GirviRenewal {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  girviId         String   @map("girvi_id")
+  previousDueDate DateTime @map("previous_due_date")
+  newDueDate      DateTime @map("new_due_date")
+  newGoldRate     Decimal  @map("new_gold_rate") @db.Decimal(10, 2)
+  newValuation    Decimal  @map("new_valuation") @db.Decimal(12, 2)
+  renewedBy       String   @map("renewed_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  girvi           Girvi    @relation(fields: [girviId], references: [id])
+
+  @@index([tenantId, girviId])
+  @@map("girvi_renewals")
+}
+
+// ─── Interest ─────────────────────────────────────────────────────────────────
+
+model InterestLedger {
+  id              String   @id @default(uuid())
+  tenantId        String   @map("tenant_id")
+  girviId         String   @map("girvi_id")
+  fromDate        DateTime @map("from_date")
+  toDate          DateTime @map("to_date")
+  principal       Decimal  @db.Decimal(12, 2)
+  rate            Decimal  @db.Decimal(5, 2)
+  days            Int
+  interest        Decimal  @db.Decimal(12, 2)
+  penalty         Decimal  @default(0) @db.Decimal(12, 2)
+  isPaid          Boolean  @default(false) @map("is_paid")
+  paidAt          DateTime? @map("paid_at")
+  calculatedAt    DateTime @default(now()) @map("calculated_at")
+
+  girvi           Girvi    @relation(fields: [girviId], references: [id])
+
+  @@index([tenantId, girviId])
+  @@map("interest_ledger")
+}
+
+model InterestConfig {
+  id              String       @id @default(uuid())
+  tenantId        String       @map("tenant_id")
+  interestType    InterestType @map("interest_type")
+  ratePerMonth    Decimal      @map("rate_per_month") @db.Decimal(5, 2)
+  penaltyRate     Decimal      @default(0) @map("penalty_rate") @db.Decimal(5, 2)
+  thresholdDays   Int          @default(15) @map("threshold_days")
+  isActive        Boolean      @default(true) @map("is_active")
+  effectiveFrom   DateTime     @map("effective_from")
+  createdBy       String       @map("created_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("interest_configs")
+}
+
+// ─── Vault ────────────────────────────────────────────────────────────────────
+
+model Vault {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  branchId  String? @map("branch_id")
+  name      String
+  location  String?
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  safes     VaultSafe[]
+
+  @@index([tenantId])
+  @@map("vaults")
+}
+
+model VaultSafe {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  vaultId   String  @map("vault_id")
+  name      String
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vault     Vault   @relation(fields: [vaultId], references: [id])
+  trays     VaultTray[]
+
+  @@index([tenantId, vaultId])
+  @@map("vault_safes")
+}
+
+model VaultTray {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  safeId    String  @map("safe_id")
+  name      String
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  safe      VaultSafe @relation(fields: [safeId], references: [id])
+  slots     VaultSlot[]
+
+  @@index([tenantId, safeId])
+  @@map("vault_trays")
+}
+
+model VaultSlot {
+  id          String          @id @default(uuid())
+  tenantId    String          @map("tenant_id")
+  trayId      String          @map("tray_id")
+  slotNumber  String          @map("slot_number")
+  status      VaultSlotStatus @default(AVAILABLE)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  tray        VaultTray       @relation(fields: [trayId], references: [id])
+  assignments VaultAssignment[]
+
+  @@unique([trayId, slotNumber])
+  @@index([tenantId, status])
+  @@map("vault_slots")
+}
+
+model VaultAssignment {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  girviId     String    @map("girvi_id")
+  slotId      String    @map("slot_id")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  assignedBy  String    @map("assigned_by")
+  releasedAt  DateTime? @map("released_at")
+  releasedBy  String?   @map("released_by")
+
+  girvi       Girvi     @relation(fields: [girviId], references: [id])
+  slot        VaultSlot @relation(fields: [slotId], references: [id])
+
+  @@index([tenantId, girviId])
+  @@index([tenantId, slotId])
+  @@map("vault_assignments")
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+model InventoryCategory {
+  id        String  @id @default(uuid())
+  tenantId  String  @map("tenant_id")
+  name      String
+  hsnCode   String? @map("hsn_code")
+  metalType MetalType @map("metal_type")
+  gstRate   Decimal @map("gst_rate") @db.Decimal(5, 2)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  items     InventoryItem[]
+
+  @@index([tenantId])
+  @@map("inventory_categories")
+}
+
+model InventoryItem {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  branchId        String?   @map("branch_id")
+  categoryId      String    @map("category_id")
+  sku             String    @unique
+  name            String
+  metalType       MetalType @map("metal_type")
+  purity          String
+  grossWeight     Decimal   @map("gross_weight") @db.Decimal(10, 3)
+  netWeight       Decimal   @map("net_weight") @db.Decimal(10, 3)
+  stoneWeight     Decimal   @default(0) @map("stone_weight") @db.Decimal(10, 3)
+  makingCharges   Decimal   @default(0) @map("making_charges") @db.Decimal(10, 2)
+  wastage         Decimal   @default(0) @db.Decimal(5, 2)
+  barcodeUrl      String?   @map("barcode_url")
+  huId            String?   @map("hu_id")
+  bisNumber       String?   @map("bis_number")
+  photoUrls       String[]  @map("photo_urls")
+  currentValue    Decimal   @default(0) @map("current_value") @db.Decimal(12, 2)
+  purchaseCost    Decimal   @default(0) @map("purchase_cost") @db.Decimal(12, 2)
+  quantity        Int       @default(1)
+  reorderLevel    Int       @default(0) @map("reorder_level")
+  isAvailable     Boolean   @default(true) @map("is_available")
+  notes           String?
+  createdBy       String    @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+  deletedBy       String?   @map("deleted_by")
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  category        InventoryCategory @relation(fields: [categoryId], references: [id])
+  adjustments     StockAdjustment[]
+  saleItems       SaleItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, metalType])
+  @@index([tenantId, isAvailable])
+  @@map("inventory_items")
+}
+
+model StockAdjustment {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  itemId      String    @map("item_id")
+  quantityChange Int    @map("quantity_change")
+  reason      String
+  adjustedBy  String    @map("adjusted_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  item        InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([tenantId, itemId])
+  @@map("stock_adjustments")
+}
+
+// ─── Sales ────────────────────────────────────────────────────────────────────
+
+model Sale {
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  branchId      String?     @map("branch_id")
+  billNumber    String      @unique @map("bill_number")
+  customerId    String?     @map("customer_id")
+  status        SaleStatus  @default(DRAFT)
+  saleDate      DateTime    @map("sale_date")
+  subTotal      Decimal     @map("sub_total") @db.Decimal(12, 2)
+  discountAmount Decimal    @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  cgst          Decimal     @default(0) @db.Decimal(12, 2)
+  sgst          Decimal     @default(0) @db.Decimal(12, 2)
+  igst          Decimal     @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal     @map("total_amount") @db.Decimal(12, 2)
+  paymentMode   PaymentMode @map("payment_mode")
+  invoiceUrl    String?     @map("invoice_url")
+  notes         String?
+  createdBy     String      @map("created_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  deletedAt     DateTime?   @map("deleted_at")
+
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  customer      Customer?   @relation(fields: [customerId], references: [id])
+  items         SaleItem[]
+  payments      SalePayment[]
+
+  @@index([tenantId])
+  @@index([tenantId, customerId])
+  @@index([tenantId, saleDate])
+  @@map("sales")
+}
+
+model SaleItem {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  saleId          String        @map("sale_id")
+  inventoryItemId String        @map("inventory_item_id")
+  quantity        Int           @default(1)
+  unitPrice       Decimal       @map("unit_price") @db.Decimal(12, 2)
+  makingCharges   Decimal       @default(0) @map("making_charges") @db.Decimal(10, 2)
+  stoneCharges    Decimal       @default(0) @map("stone_charges") @db.Decimal(10, 2)
+  wastageAmount   Decimal       @default(0) @map("wastage_amount") @db.Decimal(10, 2)
+  gstRate         Decimal       @map("gst_rate") @db.Decimal(5, 2)
+  gstAmount       Decimal       @map("gst_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal       @map("total_amount") @db.Decimal(12, 2)
+  hsnCode         String?       @map("hsn_code")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  sale            Sale          @relation(fields: [saleId], references: [id])
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([tenantId, saleId])
+  @@map("sale_items")
+}
+
+model SalePayment {
+  id          String      @id @default(uuid())
+  tenantId    String      @map("tenant_id")
+  saleId      String      @map("sale_id")
+  amount      Decimal     @db.Decimal(12, 2)
+  mode        PaymentMode
+  reference   String?
+  paidAt      DateTime    @map("paid_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  sale        Sale        @relation(fields: [saleId], references: [id])
+
+  @@index([tenantId, saleId])
+  @@map("sale_payments")
+}
+
+// ─── Purchase Orders ──────────────────────────────────────────────────────────
+
+model Vendor {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  contactName String?  @map("contact_name")
+  mobile      String?
+  email       String?
+  gstin       String?
+  address     String?
+  bankAccount String?  @map("bank_account")
+  bankIfsc    String?  @map("bank_ifsc")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  purchaseOrders PurchaseOrder[]
+
+  @@index([tenantId])
+  @@map("vendors")
+}
+
+model PurchaseOrder {
+  id            String              @id @default(uuid())
+  tenantId      String              @map("tenant_id")
+  branchId      String?             @map("branch_id")
+  poNumber      String              @unique @map("po_number")
+  vendorId      String              @map("vendor_id")
+  status        PurchaseOrderStatus @default(DRAFT)
+  orderDate     DateTime            @map("order_date")
+  expectedDate  DateTime?           @map("expected_date")
+  totalAmount   Decimal             @map("total_amount") @db.Decimal(12, 2)
+  notes         String?
+  createdBy     String              @map("created_by")
+  approvedBy    String?             @map("approved_by")
+  approvedAt    DateTime?           @map("approved_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  deletedAt     DateTime?           @map("deleted_at")
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id])
+  vendor        Vendor              @relation(fields: [vendorId], references: [id])
+  items         PurchaseOrderItem[]
+  grns          GoodsReceiptNote[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  purchaseOrderId String      @map("purchase_order_id")
+  description   String
+  metalType     MetalType     @map("metal_type")
+  purity        String?
+  estimatedWeight Decimal?    @map("estimated_weight") @db.Decimal(10, 3)
+  quantity      Int           @default(1)
+  unitPrice     Decimal       @map("unit_price") @db.Decimal(12, 2)
+  totalAmount   Decimal       @map("total_amount") @db.Decimal(12, 2)
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  @@index([tenantId, purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model GoodsReceiptNote {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  purchaseOrderId String        @map("purchase_order_id")
+  grnNumber       String        @unique @map("grn_number")
+  receivedDate    DateTime      @map("received_date")
+  receivedBy      String        @map("received_by")
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  items           GrnItem[]
+
+  @@index([tenantId, purchaseOrderId])
+  @@map("goods_receipt_notes")
+}
+
+model GrnItem {
+  id            String           @id @default(uuid())
+  tenantId      String           @map("tenant_id")
+  grnId         String           @map("grn_id")
+  description   String
+  metalType     MetalType        @map("metal_type")
+  purity        String?
+  grossWeight   Decimal?         @map("gross_weight") @db.Decimal(10, 3)
+  netWeight     Decimal?         @map("net_weight") @db.Decimal(10, 3)
+  quantity      Int              @default(1)
+  unitPrice     Decimal          @map("unit_price") @db.Decimal(12, 2)
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  grn           GoodsReceiptNote @relation(fields: [grnId], references: [id])
+
+  @@index([tenantId, grnId])
+  @@map("grn_items")
+}
+
+// ─── Repair ───────────────────────────────────────────────────────────────────
+
+model Repair {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  ticketNumber    String        @unique @map("ticket_number")
+  customerId      String        @map("customer_id")
+  branchId        String?       @map("branch_id")
+  status          RepairStatus  @default(RECEIVED)
+  itemDescription String        @map("item_description")
+  itemPhotoUrls   String[]      @map("item_photo_urls")
+  damageDescription String?     @map("damage_description")
+  estimatedCost   Decimal?      @map("estimated_cost") @db.Decimal(10, 2)
+  finalCost       Decimal?      @map("final_cost") @db.Decimal(10, 2)
+  estimateSentAt  DateTime?     @map("estimate_sent_at")
+  estimateApprovedAt DateTime?  @map("estimate_approved_at")
+  deliveredAt     DateTime?     @map("delivered_at")
+  deliverySignatureUrl String?  @map("delivery_signature_url")
+  promisedDate    DateTime?     @map("promised_date")
+  notes           String?
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  customer        Customer      @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("repairs")
+}
+
+// ─── Custom Orders ────────────────────────────────────────────────────────────
+
+model CustomOrder {
+  id              String            @id @default(uuid())
+  tenantId        String            @map("tenant_id")
+  orderNumber     String            @unique @map("order_number")
+  customerId      String            @map("customer_id")
+  branchId        String?           @map("branch_id")
+  status          CustomOrderStatus @default(DRAFT)
+  description     String
+  designPhotoUrls String[]          @map("design_photo_urls")
+  designApprovedAt DateTime?        @map("design_approved_at")
+  estimatedWeight Decimal?          @map("estimated_weight") @db.Decimal(10, 3)
+  metalType       MetalType         @map("metal_type")
+  purity          String?
+  makingCharges   Decimal?          @map("making_charges") @db.Decimal(10, 2)
+  estimatedAmount Decimal?          @map("estimated_amount") @db.Decimal(12, 2)
+  finalAmount     Decimal?          @map("final_amount") @db.Decimal(12, 2)
+  promisedDate    DateTime?         @map("promised_date")
+  deliveredAt     DateTime?         @map("delivered_at")
+  notes           String?
+  createdBy       String            @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  deletedAt       DateTime?         @map("deleted_at")
+
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  milestonePayments CustomOrderPayment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("custom_orders")
+}
+
+model CustomOrderPayment {
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  customOrderId String      @map("custom_order_id")
+  milestone     String
+  amount        Decimal     @db.Decimal(12, 2)
+  paymentMode   PaymentMode @map("payment_mode")
+  paidAt        DateTime    @map("paid_at")
+  recordedBy    String      @map("recorded_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  customOrder   CustomOrder @relation(fields: [customOrderId], references: [id])
+
+  @@index([tenantId, customOrderId])
+  @@map("custom_order_payments")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  tenantId    String      @map("tenant_id")
+  userId      String?     @map("user_id")
+  action      AuditAction
+  module      String
+  entityId    String?     @map("entity_id")
+  entityType  String?     @map("entity_type")
+  oldValues   Json?       @map("old_values")
+  newValues   Json?       @map("new_values")
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, module])
+  @@index([tenantId, userId])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Sync Queue ───────────────────────────────────────────────────────────────
+
+model SyncQueue {
+  id          String     @id @default(uuid())
+  tenantId    String     @map("tenant_id")
+  deviceId    String?    @map("device_id")
+  operation   String
+  payload     Json
+  status      SyncStatus @default(PENDING)
+  retryCount  Int        @default(0) @map("retry_count")
+  error       String?
+  processedAt DateTime?  @map("processed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([tenantId, status])
+  @@map("sync_queue")
+}
+
+// ─── Gold Rate ────────────────────────────────────────────────────────────────
+
+model GoldRate {
+  id          String    @id @default(uuid())
+  tenantId    String?   @map("tenant_id")
+  metalType   MetalType @map("metal_type")
+  purity      String
+  ratePerGram Decimal   @map("rate_per_gram") @db.Decimal(10, 2)
+  source      String    @default("MCX")
+  fetchedAt   DateTime  @map("fetched_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([metalType, purity, fetchedAt])
+  @@map("gold_rates")
+}
