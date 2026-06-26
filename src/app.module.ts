@@ -39,6 +39,9 @@ import { EventsModule } from './events/events.module';
 import { HelpdeskModule } from './helpdesk/helpdesk.module';
 import { OldGoldModule } from './old-gold/old-gold.module';
 import { DataImportModule } from './data-import/data-import.module';
+import { PayrollModule } from './payroll/payroll.module';
+import { GstFilingModule } from './gst-filing/gst-filing.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -92,6 +95,9 @@ import { DataImportModule } from './data-import/data-import.module';
     HelpdeskModule,
     OldGoldModule,
     DataImportModule,
+    PayrollModule,
+    GstFilingModule,
+    LoyaltyModule,
   ],
 })
 export class AppModule {}

@@ -307,6 +307,7 @@ model Customer {
   sales           Sale[]
   savingsSchemes  SavingsScheme[]
   oldGoldPurchases OldGoldPurchase[]
+  loyaltyAccount  LoyaltyAccount?
 
   @@unique([tenantId, mobile])
   @@index([tenantId])
@@ -1384,4 +1385,139 @@ model DataImportJob {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("data_import_jobs")
+}
+
+// ─── Payroll ──────────────────────────────────────────────────────────────────
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+model PayrollRecord {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  staffId         String        @map("staff_id")
+  month           Int
+  year            Int
+  basicSalary     Decimal       @map("basic_salary") @db.Decimal(12, 2)
+  hra             Decimal       @default(0) @db.Decimal(12, 2)
+  da              Decimal       @default(0) @db.Decimal(12, 2)
+  otherAllowances Decimal       @default(0) @map("other_allowances") @db.Decimal(12, 2)
+  grossSalary     Decimal       @map("gross_salary") @db.Decimal(12, 2)
+  pfDeduction     Decimal       @default(0) @map("pf_deduction") @db.Decimal(12, 2)
+  esiDeduction    Decimal       @default(0) @map("esi_deduction") @db.Decimal(12, 2)
+  tdsDeduction    Decimal       @default(0) @map("tds_deduction") @db.Decimal(12, 2)
+  otherDeductions Decimal       @default(0) @map("other_deductions") @db.Decimal(12, 2)
+  totalDeductions Decimal       @map("total_deductions") @db.Decimal(12, 2)
+  netSalary       Decimal       @map("net_salary") @db.Decimal(12, 2)
+  workingDays     Int           @default(0) @map("working_days")
+  presentDays     Int           @default(0) @map("present_days")
+  status          PayrollStatus @default(DRAFT)
+  approvedBy      String?       @map("approved_by")
+  approvedAt      DateTime?     @map("approved_at")
+  paidAt          DateTime?     @map("paid_at")
+  payslipUrl      String?       @map("payslip_url")
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@unique([staffId, month, year])
+  @@index([tenantId])
+  @@index([tenantId, month, year])
+  @@map("payroll_records")
+}
+
+// ─── GST Returns ─────────────────────────────────────────────────────────────
+
+enum GstReturnType {
+  GSTR1
+  GSTR3B
+}
+
+enum GstReturnStatus {
+  DRAFT
+  FILED
+  ACCEPTED
+  REJECTED
+}
+
+model GstReturn {
+  id            String          @id @default(uuid())
+  tenantId      String          @map("tenant_id")
+  returnType    GstReturnType   @map("return_type")
+  month         Int
+  year          Int
+  totalTaxable  Decimal         @map("total_taxable") @db.Decimal(14, 2)
+  totalCgst     Decimal         @default(0) @map("total_cgst") @db.Decimal(12, 2)
+  totalSgst     Decimal         @default(0) @map("total_sgst") @db.Decimal(12, 2)
+  totalIgst     Decimal         @default(0) @map("total_igst") @db.Decimal(12, 2)
+  totalTax      Decimal         @map("total_tax") @db.Decimal(12, 2)
+  status        GstReturnStatus @default(DRAFT)
+  jsonData      Json?           @map("json_data")
+  fileUrl       String?         @map("file_url")
+  filedAt       DateTime?       @map("filed_at")
+  filedBy       String?         @map("filed_by")
+  createdBy     String          @map("created_by")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@unique([tenantId, returnType, month, year])
+  @@index([tenantId])
+  @@index([tenantId, returnType])
+  @@map("gst_returns")
+}
+
+// ─── Loyalty ─────────────────────────────────────────────────────────────────
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+model LoyaltyAccount {
+  id              String       @id @default(uuid())
+  tenantId        String       @map("tenant_id")
+  customerId      String       @unique @map("customer_id")
+  points          Int          @default(0)
+  lifetimePoints  Int          @default(0) @map("lifetime_points")
+  tier            LoyaltyTier  @default(BRONZE)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  customer        Customer     @relation(fields: [customerId], references: [id])
+  transactions    LoyaltyTransaction[]
+
+  @@index([tenantId])
+  @@map("loyalty_accounts")
+}
+
+enum LoyaltyTransactionType {
+  EARN
+  REDEEM
+  EXPIRE
+  BONUS
+  ADJUSTMENT
+}
+
+model LoyaltyTransaction {
+  id              String                  @id @default(uuid())
+  tenantId        String                  @map("tenant_id")
+  accountId       String                  @map("account_id")
+  type            LoyaltyTransactionType
+  points          Int
+  description     String
+  referenceId     String?                 @map("reference_id")
+  referenceType   String?                 @map("reference_type")
+  expiresAt       DateTime?               @map("expires_at")
+  createdAt       DateTime                @default(now()) @map("created_at")
+
+  account         LoyaltyAccount          @relation(fields: [accountId], references: [id])
+
+  @@index([tenantId, accountId])
+  @@map("loyalty_transactions")
 }
