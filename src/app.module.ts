@@ -19,6 +19,11 @@ import { JobsModule } from './jobs/jobs.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { SalesModule } from './sales/sales.module';
 import { PurchaseModule } from './purchase/purchase.module';
+import { KarigarModule } from './karigar/karigar.module';
+import { RepairsModule } from './repairs/repairs.module';
+import { CustomOrdersModule } from './custom-orders/custom-orders.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { BarcodeModule } from './barcode/barcode.module';
 
 @Module({
   imports: [
@@ -52,6 +57,11 @@ import { PurchaseModule } from './purchase/purchase.module';
     InventoryModule,
     SalesModule,
     PurchaseModule,
+    KarigarModule,
+    RepairsModule,
+    CustomOrdersModule,
+    ExpensesModule,
+    BarcodeModule,
   ],
 })
 export class AppModule {}
