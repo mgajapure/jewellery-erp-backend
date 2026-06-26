@@ -24,6 +24,12 @@ import { RepairsModule } from './repairs/repairs.module';
 import { CustomOrdersModule } from './custom-orders/custom-orders.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { BarcodeModule } from './barcode/barcode.module';
+import { BranchesModule } from './branches/branches.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { GoldRatesModule } from './gold-rates/gold-rates.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { StaffModule } from './staff/staff.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -62,6 +68,12 @@ import { BarcodeModule } from './barcode/barcode.module';
     CustomOrdersModule,
     ExpensesModule,
     BarcodeModule,
+    BranchesModule,
+    DashboardModule,
+    GoldRatesModule,
+    NotificationsModule,
+    StaffModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}
