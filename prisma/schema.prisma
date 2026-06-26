@@ -306,6 +306,7 @@ model Customer {
   customOrders    CustomOrder[]
   sales           Sale[]
   savingsSchemes  SavingsScheme[]
+  oldGoldPurchases OldGoldPurchase[]
 
   @@unique([tenantId, mobile])
   @@index([tenantId])
@@ -1254,4 +1255,133 @@ model SchemeCollection {
   @@unique([schemeId, month, year])
   @@index([tenantId, schemeId])
   @@map("scheme_collections")
+}
+
+// ─── Help Desk ────────────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model HelpDeskTicket {
+  id           String         @id @default(uuid())
+  tenantId     String         @map("tenant_id")
+  ticketNumber String         @map("ticket_number")
+  subject      String
+  description  String         @db.Text
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  reportedBy   String         @map("reported_by")
+  assignedTo   String?        @map("assigned_to")
+  slaDeadline  DateTime?      @map("sla_deadline")
+  resolvedAt   DateTime?      @map("resolved_at")
+  closedAt     DateTime?      @map("closed_at")
+  csatScore    Int?           @map("csat_score")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  deletedAt    DateTime?      @map("deleted_at")
+
+  comments     TicketComment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@map("help_desk_tickets")
+}
+
+model TicketComment {
+  id        String         @id @default(uuid())
+  ticketId  String         @map("ticket_id")
+  tenantId  String         @map("tenant_id")
+  comment   String         @db.Text
+  isInternal Boolean       @default(false) @map("is_internal")
+  postedBy  String         @map("posted_by")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  ticket    HelpDeskTicket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("ticket_comments")
+}
+
+// ─── Old Gold ─────────────────────────────────────────────────────────────────
+
+enum OldGoldStatus {
+  RECEIVED
+  PURITY_TESTED
+  MELTED
+  SETTLED
+  RETURNED
+}
+
+model OldGoldPurchase {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  purchaseNumber  String        @map("purchase_number")
+  customerId      String?       @map("customer_id")
+  vendorName      String?       @map("vendor_name")
+  grossWeight     Decimal       @map("gross_weight") @db.Decimal(10, 3)
+  testedPurity    Decimal?      @map("tested_purity") @db.Decimal(5, 2)
+  netFineWeight   Decimal?      @map("net_fine_weight") @db.Decimal(10, 3)
+  meltingLoss     Decimal?      @map("melting_loss") @db.Decimal(5, 2)
+  ratePerGram     Decimal       @map("rate_per_gram") @db.Decimal(10, 2)
+  totalAmount     Decimal?      @map("total_amount") @db.Decimal(12, 2)
+  status          OldGoldStatus @default(RECEIVED)
+  refinerId       String?       @map("refiner_id")
+  settledAt       DateTime?     @map("settled_at")
+  notes           String?
+  recordedBy      String        @map("recorded_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("old_gold_purchases")
+}
+
+// ─── Data Import Jobs ─────────────────────────────────────────────────────────
+
+enum ImportStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+model DataImportJob {
+  id           String       @id @default(uuid())
+  tenantId     String       @map("tenant_id")
+  module       String
+  fileName     String       @map("file_name")
+  fileUrl      String       @map("file_url")
+  totalRows    Int          @default(0) @map("total_rows")
+  processedRows Int         @default(0) @map("processed_rows")
+  successRows  Int          @default(0) @map("success_rows")
+  failedRows   Int          @default(0) @map("failed_rows")
+  status       ImportStatus @default(QUEUED)
+  errors       Json?
+  startedAt    DateTime?    @map("started_at")
+  completedAt  DateTime?    @map("completed_at")
+  importedBy   String       @map("imported_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("data_import_jobs")
 }

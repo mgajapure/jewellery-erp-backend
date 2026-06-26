@@ -36,6 +36,9 @@ import { DiamondModule } from './diamond/diamond.module';
 import { SyncModule } from './sync/sync.module';
 import { SearchModule } from './search/search.module';
 import { EventsModule } from './events/events.module';
+import { HelpdeskModule } from './helpdesk/helpdesk.module';
+import { OldGoldModule } from './old-gold/old-gold.module';
+import { DataImportModule } from './data-import/data-import.module';
 
 @Module({
   imports: [
@@ -86,6 +89,9 @@ import { EventsModule } from './events/events.module';
     SyncModule,
     SearchModule,
     EventsModule,
+    HelpdeskModule,
+    OldGoldModule,
+    DataImportModule,
   ],
 })
 export class AppModule {}
