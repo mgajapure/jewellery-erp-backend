@@ -614,6 +614,7 @@ model InventoryItem {
   category        InventoryCategory @relation(fields: [categoryId], references: [id])
   adjustments     StockAdjustment[]
   saleItems       SaleItem[]
+  diamondCertificates DiamondCertificate[]
 
   @@index([tenantId])
   @@index([tenantId, metalType])
@@ -1035,6 +1036,8 @@ model DiamondCertificate {
   expiresAt       DateTime? @map("expires_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
   @@index([tenantId, inventoryItemId])
   @@index([certNumber])

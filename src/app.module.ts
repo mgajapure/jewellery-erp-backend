@@ -32,6 +32,10 @@ import { StaffModule } from './staff/staff.module';
 import { SettingsModule } from './settings/settings.module';
 import { ReportsModule } from './reports/reports.module';
 import { SavingsModule } from './savings/savings.module';
+import { DiamondModule } from './diamond/diamond.module';
+import { SyncModule } from './sync/sync.module';
+import { SearchModule } from './search/search.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -78,6 +82,10 @@ import { SavingsModule } from './savings/savings.module';
     SettingsModule,
     ReportsModule,
     SavingsModule,
+    DiamondModule,
+    SyncModule,
+    SearchModule,
+    EventsModule,
   ],
 })
 export class AppModule {}
