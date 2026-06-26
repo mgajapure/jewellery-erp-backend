@@ -30,6 +30,8 @@ import { GoldRatesModule } from './gold-rates/gold-rates.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { StaffModule } from './staff/staff.module';
 import { SettingsModule } from './settings/settings.module';
+import { ReportsModule } from './reports/reports.module';
+import { SavingsModule } from './savings/savings.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { SettingsModule } from './settings/settings.module';
     NotificationsModule,
     StaffModule,
     SettingsModule,
+    ReportsModule,
+    SavingsModule,
   ],
 })
 export class AppModule {}

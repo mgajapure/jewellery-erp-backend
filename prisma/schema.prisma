@@ -305,6 +305,7 @@ model Customer {
   repairs         Repair[]
   customOrders    CustomOrder[]
   sales           Sale[]
+  savingsSchemes  SavingsScheme[]
 
   @@unique([tenantId, mobile])
   @@index([tenantId])
@@ -1197,4 +1198,57 @@ model NotificationLog {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("notification_logs")
+}
+
+// ─── Savings Scheme (Chit / Gold Savings) ────────────────────────────────────
+
+enum SchemeStatus {
+  ACTIVE
+  MATURED
+  CANCELLED
+}
+
+model SavingsScheme {
+  id              String        @id @default(uuid())
+  tenantId        String        @map("tenant_id")
+  customerId      String        @map("customer_id")
+  schemeName      String        @map("scheme_name")
+  monthlyAmount   Decimal       @map("monthly_amount") @db.Decimal(12, 2)
+  durationMonths  Int           @map("duration_months")
+  bonusMonth      Int?          @map("bonus_month")
+  startDate       DateTime      @map("start_date")
+  maturityDate    DateTime      @map("maturity_date")
+  status          SchemeStatus  @default(ACTIVE)
+  maturedAt       DateTime?     @map("matured_at")
+  notes           String?
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  collections     SchemeCollection[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("savings_schemes")
+}
+
+model SchemeCollection {
+  id          String        @id @default(uuid())
+  tenantId    String        @map("tenant_id")
+  schemeId    String        @map("scheme_id")
+  month       Int
+  year        Int
+  amount      Decimal       @db.Decimal(12, 2)
+  paymentMode PaymentMode   @map("payment_mode")
+  paidAt      DateTime      @map("paid_at")
+  recordedBy  String        @map("recorded_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  scheme      SavingsScheme @relation(fields: [schemeId], references: [id])
+
+  @@unique([schemeId, month, year])
+  @@index([tenantId, schemeId])
+  @@map("scheme_collections")
 }
