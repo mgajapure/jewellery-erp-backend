@@ -21,6 +21,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: 30d
       OTP_EXPIRY_SECONDS: 300
       OTP_MAX_ATTEMPTS: 5
+    command: sh -c "npx prisma db push && npx prisma db seed && npm run start:dev"
     depends_on:
       postgres:
         condition: service_healthy
