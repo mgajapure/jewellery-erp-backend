@@ -1,9 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { PGlite } from '@electric-sql/pglite';
-import { PrismaPGlite } from 'pglite-prisma-adapter';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import * as path from 'path';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,20 +11,9 @@ function months(n: number): Date {
   return d;
 }
 
-async function getPrisma(): Promise<PrismaClient> {
-  if (process.env.DATABASE_URL) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter } as never);
-  }
-  const dbPath = path.resolve(process.cwd(), '.pglite-dev-db');
-  const pglite = new PGlite(dbPath);
-  const adapter = new PrismaPGlite(pglite);
-  return new PrismaClient({ adapter } as never);
-}
-
 async function main() {
-  const prisma = await getPrisma();
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) } as never);
 
   const existing = await prisma.tenant.findUnique({ where: { code: 'MLJ001' } });
   if (existing) {

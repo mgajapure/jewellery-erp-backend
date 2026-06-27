@@ -4,7 +4,6 @@ dist
 .gitignore
 .env
 *.log
-.pglite-dev-db
 coverage
 .nyc_output
 *.md
