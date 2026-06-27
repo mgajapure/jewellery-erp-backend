@@ -1,5 +1,5 @@
 # ─── Stage 1: base — shared deps install ────────────────────────────────────
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci && npm cache clean --force
@@ -17,7 +17,7 @@ COPY . .
 RUN npx prisma generate && npm run build
 
 # ─── Stage 4: production — minimal runtime image ─────────────────────────────
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
