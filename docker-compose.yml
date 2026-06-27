@@ -4,16 +4,23 @@ services:
       context: .
       target: development
     ports:
-      - "${PORT:-3000}:3000"
+      - "3000:3000"
     volumes:
       - .:/app
       - /app/node_modules
-    env_file:
-      - .env
     environment:
+      NODE_ENV: development
+      PORT: 3000
+      APP_URL: http://localhost:3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/jewellery_erp
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      JWT_SECRET: dev-jwt-secret-change-in-production-32ch
+      JWT_EXPIRES_IN: 24h
+      JWT_REFRESH_SECRET: dev-refresh-secret-change-in-production-32
+      JWT_REFRESH_EXPIRES_IN: 30d
+      OTP_EXPIRY_SECONDS: 300
+      OTP_MAX_ATTEMPTS: 5
     depends_on:
       postgres:
         condition: service_healthy
