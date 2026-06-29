@@ -1,11 +1,11 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../../audit/audit.service';
+import { CreateVaultDto, CreateSafeDto, CreateTrayDto, CreateSlotsDto } from '../dto/vault.dto';
 
 @Injectable()
 export class VaultService {
@@ -13,6 +13,111 @@ export class VaultService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
   ) {}
+
+  async createVault(tenantId: string, dto: CreateVaultDto, userId: string) {
+    const vault = await this.prisma.vault.create({
+      data: { tenantId, ...dto },
+    });
+    await this.auditService.log({
+      tenantId, userId, action: 'CREATE', module: 'vault',
+      entityId: vault.id, entityType: 'Vault', newValues: dto,
+    });
+    return vault;
+  }
+
+  async listVaults(tenantId: string) {
+    return this.prisma.vault.findMany({
+      where: { tenantId, isActive: true },
+      include: {
+        safes: {
+          where: { isActive: true },
+          include: {
+            trays: {
+              where: { isActive: true },
+              include: { slots: { select: { id: true, slotNumber: true, status: true } } },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getVault(tenantId: string, vaultId: string) {
+    const vault = await this.prisma.vault.findFirst({
+      where: { id: vaultId, tenantId, isActive: true },
+      include: {
+        safes: {
+          where: { isActive: true },
+          include: {
+            trays: {
+              where: { isActive: true },
+              include: { slots: { select: { id: true, slotNumber: true, status: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!vault) throw new NotFoundException('Vault not found');
+    return vault;
+  }
+
+  async createSafe(tenantId: string, dto: CreateSafeDto, userId: string) {
+    const vault = await this.prisma.vault.findFirst({ where: { id: dto.vaultId, tenantId } });
+    if (!vault) throw new NotFoundException('Vault not found');
+    const safe = await this.prisma.vaultSafe.create({ data: { tenantId, ...dto } });
+    await this.auditService.log({
+      tenantId, userId, action: 'CREATE', module: 'vault',
+      entityId: safe.id, entityType: 'VaultSafe', newValues: dto,
+    });
+    return safe;
+  }
+
+  async createTray(tenantId: string, dto: CreateTrayDto, userId: string) {
+    const safe = await this.prisma.vaultSafe.findFirst({ where: { id: dto.safeId, tenantId } });
+    if (!safe) throw new NotFoundException('Safe not found');
+    const tray = await this.prisma.vaultTray.create({ data: { tenantId, ...dto } });
+    await this.auditService.log({
+      tenantId, userId, action: 'CREATE', module: 'vault',
+      entityId: tray.id, entityType: 'VaultTray', newValues: dto,
+    });
+    return tray;
+  }
+
+  async createSlots(tenantId: string, dto: CreateSlotsDto, userId: string) {
+    const tray = await this.prisma.vaultTray.findFirst({ where: { id: dto.trayId, tenantId } });
+    if (!tray) throw new NotFoundException('Tray not found');
+
+    const existing = await this.prisma.vaultSlot.count({ where: { trayId: dto.trayId } });
+    const prefix = dto.prefix ?? '';
+    const slots = Array.from({ length: dto.count }, (_, i) => ({
+      tenantId,
+      trayId: dto.trayId,
+      slotNumber: `${prefix}${existing + i + 1}`,
+    }));
+
+    const result = await this.prisma.vaultSlot.createMany({ data: slots });
+    await this.auditService.log({
+      tenantId, userId, action: 'CREATE', module: 'vault',
+      entityType: 'VaultSlot', newValues: { trayId: dto.trayId, count: dto.count },
+    });
+    return { created: result.count };
+  }
+
+  async listSlots(tenantId: string, trayId: string) {
+    return this.prisma.vaultSlot.findMany({
+      where: { trayId, tenantId },
+      include: {
+        assignments: {
+          where: { releasedAt: null },
+          include: {
+            girvi: { select: { girviNumber: true, customer: { select: { name: true } } } },
+          },
+        },
+      },
+      orderBy: { slotNumber: 'asc' },
+    });
+  }
 
   async assignSlot(
     tenantId: string,

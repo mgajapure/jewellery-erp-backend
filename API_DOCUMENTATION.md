@@ -730,11 +730,177 @@ Interest configuration fields (via `PUT /settings/interest`):
 
 ### 5. Vault
 
-> Vault management is handled internally during Girvi creation, disbursal, and redemption. The vault must be configured with slots before any Girvi can be finalized.
+**Base path:** `/api/v1/vault`  
+All endpoints require JWT.
 
 Vault hierarchy: **Vault → Safe → Tray → Slot**
 
 Slot assignment is **mandatory** before Girvi finalisation. Redemption auto-releases the slot.
+
+---
+
+#### POST `/vault/vaults`
+Create a vault.  
+**Permission:** `SETTINGS_MANAGE`
+
+**Request body:**
+```json
+{
+  "name": "Main Vault",
+  "location": "Ground floor, back room",
+  "branchId": "branch-uuid"
+}
+```
+
+---
+
+#### GET `/vault/vaults`
+List all vaults with full hierarchy (safes → trays → slots).  
+**Permission:** `GIRVI_VIEW`
+
+---
+
+#### GET `/vault/vaults/:id`
+Get a single vault with its complete safe/tray/slot tree.  
+**Permission:** `GIRVI_VIEW`
+
+---
+
+#### POST `/vault/safes`
+Add a safe inside a vault.  
+**Permission:** `SETTINGS_MANAGE`
+
+**Request body:**
+```json
+{
+  "vaultId": "vault-uuid",
+  "name": "Safe A"
+}
+```
+
+---
+
+#### POST `/vault/trays`
+Add a tray inside a safe.  
+**Permission:** `SETTINGS_MANAGE`
+
+**Request body:**
+```json
+{
+  "safeId": "safe-uuid",
+  "name": "Tray 1"
+}
+```
+
+---
+
+#### POST `/vault/slots`
+Bulk create slots in a tray.  
+**Permission:** `SETTINGS_MANAGE`
+
+**Request body:**
+```json
+{
+  "trayId": "tray-uuid",
+  "count": 10,
+  "prefix": "S"
+}
+```
+
+Creates slots numbered `S1`, `S2` … `S10` (or `1`–`10` if no prefix).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": { "created": 10 }
+}
+```
+
+---
+
+#### GET `/vault/slots?trayId=:trayId`
+List all slots in a tray with current occupancy status.  
+**Permission:** `GIRVI_VIEW`
+
+**Query params:**
+
+| Param | Type | Required |
+|---|---|---|
+| `trayId` | string | Yes |
+
+---
+
+#### GET `/vault/slots/available`
+Find available (unoccupied) slots across the vault.  
+**Permission:** `GIRVI_VIEW`
+
+**Query params:**
+
+| Param | Type | Notes |
+|---|---|---|
+| `vaultId` | string | Optional — filter by vault |
+
+---
+
+#### GET `/vault/occupancy`
+Vault occupancy summary.  
+**Permission:** `GIRVI_VIEW`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "total": 200,
+    "occupied": 142,
+    "available": 58,
+    "occupancyPercent": 71.0
+  }
+}
+```
+
+---
+
+#### POST `/vault/assign`
+Assign an available slot to a girvi.  
+**Permission:** `GIRVI_UPDATE`
+
+**Request body:**
+```json
+{
+  "girviId": "girvi-uuid",
+  "slotId": "slot-uuid"
+}
+```
+
+> Returns `409 Conflict` if slot is already occupied.
+
+---
+
+#### POST `/vault/release/:girviId`
+Release the vault slot assigned to a girvi (called automatically on redemption).  
+**Permission:** `GIRVI_UPDATE`
+
+---
+
+#### GET `/vault/assignment/:girviId`
+Get the current active vault assignment for a girvi.  
+**Permission:** `GIRVI_VIEW`
+
+**Response includes:** slot number, tray name, safe name, vault name.
+
+---
+
+#### GET `/vault/search?girviId=:girviId`
+Search vault by girvi ID — returns location + customer details.  
+**Permission:** `GIRVI_VIEW`
+
+**Query params:**
+
+| Param | Type | Required |
+|---|---|---|
+| `girviId` | string | Yes |
 
 ---
 
