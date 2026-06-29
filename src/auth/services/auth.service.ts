@@ -176,6 +176,32 @@ export class AuthService {
     return this.generateTokens(session.userId, session.tenantId, session.user.role);
   }
 
+  async logout(userId: string, tenantId: string, refreshToken: string, ipAddress?: string): Promise<void> {
+    await this.prisma.userSession.deleteMany({
+      where: { userId, tenantId, refreshToken },
+    });
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'LOGOUT',
+      module: 'auth',
+      ipAddress,
+    });
+  }
+
+  async logoutAll(userId: string, tenantId: string, ipAddress?: string): Promise<void> {
+    await this.prisma.userSession.deleteMany({ where: { userId, tenantId } });
+
+    await this.auditService.log({
+      tenantId,
+      userId,
+      action: 'LOGOUT_ALL',
+      module: 'auth',
+      ipAddress,
+    });
+  }
+
   async approveDevice(deviceId: string, approvedBy: string, tenantId: string): Promise<void> {
     const device = await this.prisma.device.findFirst({
       where: { id: deviceId, tenantId },

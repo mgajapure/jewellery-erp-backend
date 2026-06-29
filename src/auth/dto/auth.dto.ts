@@ -89,3 +89,10 @@ export class ApproveDeviceDto {
   @IsNotEmpty()
   deviceId: string;
 }
+
+export class LogoutDto {
+  @ApiProperty({ description: 'Refresh token to invalidate' })
+  @IsString()
+  @IsNotEmpty()
+  refreshToken: string;
+}

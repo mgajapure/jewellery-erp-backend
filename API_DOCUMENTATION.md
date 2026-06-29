@@ -300,6 +300,45 @@ Login with PIN (faster than OTP for returning users).
 
 ---
 
+#### POST `/auth/logout`
+Logout from the current device — deletes the session and invalidates the refresh token.  
+**Auth:** JWT required
+
+**Request body:**
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+> After logout, discard both `accessToken` and `refreshToken` on the client. The access token stays valid until its 24h expiry (stateless JWT) — use short expiry + client-side discard pattern.
+
+---
+
+#### POST `/auth/logout/all`
+Logout from **all devices** — deletes every active session for this user.  
+**Auth:** JWT required
+
+No request body needed.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+---
+
 #### GET `/auth/devices/pending`
 List devices awaiting owner approval.  
 **Permission:** `DEVICE_APPROVE`
@@ -317,6 +356,45 @@ List devices awaiting owner approval.
       "createdAt": "2026-06-01T10:00:00Z"
     }
   ]
+}
+```
+
+---
+
+#### POST `/auth/logout`
+Logout from the current device — deletes the session and invalidates the refresh token.  
+**Auth:** JWT required
+
+**Request body:**
+```json
+{
+  "refreshToken": "eyJ..."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+> After logout, discard both `accessToken` and `refreshToken` on the client. The access token remains valid until its 24h expiry (stateless JWT), so do not rely on it being instantly blocked — use short expiry + logout-on-client pattern.
+
+---
+
+#### POST `/auth/logout/all`
+Logout from **all devices** — deletes every session for this user.  
+**Auth:** JWT required
+
+No request body needed.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": null
 }
 ```
 

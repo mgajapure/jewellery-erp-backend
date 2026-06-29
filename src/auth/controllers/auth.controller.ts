@@ -16,6 +16,7 @@ import { Permission } from '../rbac/permissions';
 import { AuthService } from '../services/auth.service';
 import {
   ApproveDeviceDto,
+  LogoutDto,
   RefreshTokenDto,
   SendOtpDto,
   SetPinDto,
@@ -66,6 +67,31 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with PIN' })
   verifyPin(@Body() dto: VerifyPinDto & { userId: string; tenantId: string }, @Ip() ip: string) {
     return this.authService.verifyPin(dto.userId, dto.tenantId, dto, ip);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @ApiBearerAuth()
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout — invalidate current session refresh token' })
+  logout(
+    @CurrentUser() user: { id: string },
+    @TenantId() tenantId: string,
+    @Body() dto: LogoutDto,
+    @Ip() ip: string,
+  ) {
+    return this.authService.logout(user.id, tenantId, dto.refreshToken, ip);
+  }
+
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @ApiBearerAuth()
+  @Post('logout/all')
+  @ApiOperation({ summary: 'Logout from all devices — invalidate all sessions' })
+  logoutAll(
+    @CurrentUser() user: { id: string },
+    @TenantId() tenantId: string,
+    @Ip() ip: string,
+  ) {
+    return this.authService.logoutAll(user.id, tenantId, ip);
   }
 
   @UseGuards(JwtAuthGuard, PermissionGuard)
