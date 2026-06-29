@@ -361,45 +361,6 @@ List devices awaiting owner approval.
 
 ---
 
-#### POST `/auth/logout`
-Logout from the current device — deletes the session and invalidates the refresh token.  
-**Auth:** JWT required
-
-**Request body:**
-```json
-{
-  "refreshToken": "eyJ..."
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": null
-}
-```
-
-> After logout, discard both `accessToken` and `refreshToken` on the client. The access token remains valid until its 24h expiry (stateless JWT), so do not rely on it being instantly blocked — use short expiry + logout-on-client pattern.
-
----
-
-#### POST `/auth/logout/all`
-Logout from **all devices** — deletes every session for this user.  
-**Auth:** JWT required
-
-No request body needed.
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": null
-}
-```
-
----
-
 #### PATCH `/auth/devices/approve`
 Approve or reject a device.  
 **Permission:** `DEVICE_APPROVE`
